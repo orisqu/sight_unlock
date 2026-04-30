@@ -13,7 +13,8 @@ import android.view.View;
 public class StaffView extends View {
 
     public static final int INK = 0xFFE8DDC5;
-    public static final int CLEF_INK = 0xFFD4B58A;
+    // Slightly darker than the lock-screen slate so the clef reads as an inlay.
+    public static final int CLEF_INK = 0xFF20242F;
 
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint notePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
