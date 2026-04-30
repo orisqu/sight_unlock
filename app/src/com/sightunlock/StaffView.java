@@ -55,12 +55,13 @@ public class StaffView extends View {
 
         float staffLeft = w * 0.08f;
         float staffRight = w - w * 0.08f;
+
+        drawTrebleClef(canvas, staffLeft + spacing * 0.4f, staffTop, staffBottom, spacing);
+
         for (int i = 0; i < 5; i++) {
             float y = staffBottom - i * spacing;
             canvas.drawLine(staffLeft, y, staffRight, y, linePaint);
         }
-
-        drawTrebleClef(canvas, staffLeft + spacing * 0.4f, staffTop, staffBottom, spacing);
 
         float noteCenterX = staffLeft + (staffRight - staffLeft) * 0.62f;
         float noteY = staffBottom - notePosition * (spacing / 2f);
