@@ -3,7 +3,6 @@ package com.sightunlock;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,6 +18,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class LockActivity extends Activity {
+
+    private static final int BG = 0xFF2A2F3D;
+    private static final int INK = 0xFFE8DDC5;
+    private static final int INK_DIM = 0xFF8A8170;
+    private static final int BUTTON_BG = 0xFF3D4356;
+    private static final int OK_INK = 0xFF9BC58A;
+    private static final int ERR_INK = 0xFFD08C8C;
 
     private SrsState srs;
     private StaffView staff;
@@ -57,12 +63,13 @@ public class LockActivity extends Activity {
     private void buildUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.WHITE);
+        root.setBackgroundColor(BG);
         root.setPadding(dp(16), dp(24), dp(16), dp(24));
 
         stats = new TextView(this);
-        stats.setTextColor(Color.parseColor("#666666"));
-        stats.setTextSize(13);
+        stats.setTextColor(INK_DIM);
+        stats.setTextSize(12);
+        stats.setLetterSpacing(0.04f);
         stats.setGravity(Gravity.CENTER);
         root.addView(stats, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -70,17 +77,17 @@ public class LockActivity extends Activity {
 
         TextView prompt = new TextView(this);
         prompt.setText("Name this note");
-        prompt.setTextColor(Color.BLACK);
-        prompt.setTextSize(22);
-        prompt.setTypeface(Typeface.DEFAULT_BOLD);
+        prompt.setTextColor(INK);
+        prompt.setTextSize(20);
+        prompt.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
         prompt.setGravity(Gravity.CENTER);
-        prompt.setPadding(0, dp(8), 0, dp(8));
+        prompt.setPadding(0, dp(10), 0, dp(6));
         root.addView(prompt, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
         FrameLayout staffWrap = new FrameLayout(this);
-        staffWrap.setBackgroundColor(Color.WHITE);
+        staffWrap.setBackgroundColor(BG);
         staff = new StaffView(this);
         staffWrap.addView(staff, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -90,8 +97,8 @@ public class LockActivity extends Activity {
         root.addView(staffWrap, staffLp);
 
         feedback = new TextView(this);
-        feedback.setTextSize(20);
-        feedback.setTypeface(Typeface.DEFAULT_BOLD);
+        feedback.setTextSize(18);
+        feedback.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
         feedback.setGravity(Gravity.CENTER);
         feedback.setPadding(0, dp(8), 0, dp(8));
         feedback.setMinHeight(dp(40));
@@ -106,11 +113,14 @@ public class LockActivity extends Activity {
         for (final char letter : letters) {
             Button b = new Button(this);
             b.setText(String.valueOf(letter));
-            b.setTextSize(20);
-            b.setTypeface(Typeface.DEFAULT_BOLD);
+            b.setTextSize(18);
+            b.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
             b.setAllCaps(false);
+            b.setTextColor(INK);
+            b.setBackgroundColor(BUTTON_BG);
+            b.setStateListAnimator(null);
             LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(
-                    0, dp(64), 1f);
+                    0, dp(60), 1f);
             bLp.setMargins(dp(3), 0, dp(3), 0);
             buttonRow.addView(b, bLp);
             b.setOnClickListener(new View.OnClickListener() {
@@ -157,7 +167,7 @@ public class LockActivity extends Activity {
             buttonRow.getChildAt(i).setEnabled(false);
         }
         if (isRight) {
-            feedback.setTextColor(Color.parseColor("#1B873B"));
+            feedback.setTextColor(OK_INK);
             feedback.setText(correct + " — correct");
             staff.postDelayed(new Runnable() {
                 @Override
@@ -167,7 +177,7 @@ public class LockActivity extends Activity {
             }, 350);
         } else {
             vibrate();
-            feedback.setTextColor(Color.parseColor("#B00020"));
+            feedback.setTextColor(ERR_INK);
             feedback.setText("That was " + correct + ". Try the next one.");
             staff.postDelayed(new Runnable() {
                 @Override

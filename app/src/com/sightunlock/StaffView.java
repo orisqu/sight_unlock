@@ -4,12 +4,16 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.view.View;
 
 public class StaffView extends View {
+
+    public static final int INK = 0xFFE8DDC5;
+    public static final int CLEF_INK = 0xFFD4B58A;
 
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint notePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -20,11 +24,11 @@ public class StaffView extends View {
     public StaffView(Context c, AttributeSet a) { super(c, a); init(); }
 
     private void init() {
-        linePaint.setColor(Color.BLACK);
+        linePaint.setColor(INK);
         linePaint.setStyle(Paint.Style.STROKE);
-        notePaint.setColor(Color.BLACK);
+        notePaint.setColor(INK);
         notePaint.setStyle(Paint.Style.FILL);
-        clefPaint.setColor(Color.BLACK);
+        clefPaint.setColor(CLEF_INK);
         clefPaint.setStyle(Paint.Style.FILL);
         clefPaint.setTypeface(Typeface.SERIF);
         clefPaint.setTextAlign(Paint.Align.CENTER);
@@ -110,19 +114,20 @@ public class StaffView extends View {
     private void drawTrebleClef(Canvas canvas, float x, float top, float bottom, float spacing) {
         String clef = "𝄞";
         boolean hasClef = clefPaint.hasGlyph(clef);
-        if (hasClef) {
-            float clefHeight = spacing * 7.5f;
-            clefPaint.setTextSize(clefHeight);
-            float gLineY = bottom - spacing * 3f;
-            float baselineY = gLineY + clefHeight * 0.18f;
-            canvas.drawText(clef, x + spacing * 0.6f, baselineY, clefPaint);
-        } else {
-            float clefHeight = spacing * 5.5f;
+        // Treble clef should span roughly one space above the staff to one space
+        // below it (so ~6 spacings total for a 4-spacing staff).
+        float clefHeight = (hasClef ? 6.4f : 4.4f) * spacing;
+        if (!hasClef) {
             clefPaint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC));
-            clefPaint.setTextSize(clefHeight);
-            float gLineY = bottom - spacing * 3f;
-            float baselineY = gLineY + clefHeight * 0.35f;
-            canvas.drawText("G", x + spacing * 0.7f, baselineY, clefPaint);
         }
+        clefPaint.setTextSize(clefHeight);
+        Rect bounds = new Rect();
+        String glyph = hasClef ? clef : "G";
+        clefPaint.getTextBounds(glyph, 0, glyph.length(), bounds);
+        // Center the glyph vertically on the staff middle line (B4 = bottom - 2 * spacing).
+        float staffMiddle = bottom - 2f * spacing;
+        float baselineY = staffMiddle - bounds.exactCenterY();
+        float xCenter = x + spacing * 0.6f + bounds.width() / 2f;
+        canvas.drawText(glyph, xCenter, baselineY, clefPaint);
     }
 }
