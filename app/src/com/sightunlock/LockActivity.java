@@ -6,6 +6,8 @@ import android.content.Context;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.Gravity;
@@ -25,8 +27,13 @@ public class LockActivity extends Activity {
     private static final int BUTTON_BG = 0xFF3D4356;
     private static final int OK_INK = 0xFF9BC58A;
     private static final int ERR_INK = 0xFFD08C8C;
+    private static final long IDLE_TIMEOUT_MS = 30_000L;
 
     private SrsState srs;
+    private final Handler idleHandler = new Handler(Looper.getMainLooper());
+    private final Runnable idleRunnable = new Runnable() {
+        @Override public void run() { finish(); }
+    };
     private StaffView staff;
     private TextView feedback;
     private TextView stats;
@@ -58,6 +65,24 @@ public class LockActivity extends Activity {
         srs = new SrsState(this);
         buildUi();
         nextQuestion();
+        resetIdleTimer();
+    }
+
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        resetIdleTimer();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        idleHandler.removeCallbacks(idleRunnable);
+    }
+
+    private void resetIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable);
+        idleHandler.postDelayed(idleRunnable, IDLE_TIMEOUT_MS);
     }
 
     private void buildUi() {

@@ -24,8 +24,10 @@ public class LockService extends Service {
         super.onCreate();
         startInForeground();
         receiver = new ScreenReceiver();
+        // USER_PRESENT only — fires when the user actually unlocks the keyguard.
+        // SCREEN_ON also fires for the camera shortcut, double-tap-to-wake to
+        // glance at the time, etc., which we do NOT want to interrupt.
         IntentFilter f = new IntentFilter();
-        f.addAction(Intent.ACTION_SCREEN_ON);
         f.addAction(Intent.ACTION_USER_PRESENT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, f, Context.RECEIVER_NOT_EXPORTED);

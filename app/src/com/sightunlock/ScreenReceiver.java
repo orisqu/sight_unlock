@@ -12,8 +12,7 @@ public class ScreenReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
         if (action == null) return;
-        if (Intent.ACTION_SCREEN_ON.equals(action)
-                || Intent.ACTION_USER_PRESENT.equals(action)) {
+        if (Intent.ACTION_USER_PRESENT.equals(action)) {
             long now = System.currentTimeMillis();
             if (now - lastLaunchAtMs < 800) return;
             lastLaunchAtMs = now;
