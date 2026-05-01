@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sight Unlock</string>
+    <string name="accessibility_summary">Trigger sight reading quiz before guarded apps open</string>
+    <string name="accessibility_description">Sight Unlock observes which app is in the foreground so it can show the music challenge before any of the apps you have selected as guarded are usable. The service does not read window content.</string>
 </resources>

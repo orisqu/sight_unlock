@@ -2,7 +2,6 @@ package com.sightunlock;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -20,6 +19,7 @@ public class StaffView extends View {
     private final Paint notePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint clefPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int notePosition = 4;
+    private SrsState.Clef clef = SrsState.Clef.TREBLE;
 
     public StaffView(Context c) { super(c); init(); }
     public StaffView(Context c, AttributeSet a) { super(c, a); init(); }
@@ -40,6 +40,11 @@ public class StaffView extends View {
         invalidate();
     }
 
+    public void setClef(SrsState.Clef c) {
+        clef = c;
+        invalidate();
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -56,7 +61,7 @@ public class StaffView extends View {
         float staffLeft = w * 0.08f;
         float staffRight = w - w * 0.08f;
 
-        drawTrebleClef(canvas, staffLeft + spacing * 0.4f, staffTop, staffBottom, spacing);
+        drawClef(canvas, staffLeft + spacing * 0.4f, staffTop, staffBottom, spacing);
 
         for (int i = 0; i < 5; i++) {
             float y = staffBottom - i * spacing;
@@ -70,16 +75,14 @@ public class StaffView extends View {
 
         if (notePosition < 0 || notePosition > 8) {
             int start = notePosition < 0 ? -2 : 10;
-            int end = notePosition < 0 ? 0 : notePosition;
-            int step = 2;
             if (notePosition < 0) {
-                for (int p = start; p >= notePosition; p -= step) {
+                for (int p = start; p >= notePosition; p -= 2) {
                     float ly = staffBottom - p * (spacing / 2f);
                     canvas.drawLine(noteCenterX - spacing * 0.9f, ly,
                             noteCenterX + spacing * 0.9f, ly, linePaint);
                 }
             } else {
-                for (int p = start; p <= notePosition; p += step) {
+                for (int p = start; p <= notePosition; p += 2) {
                     float ly = staffBottom - p * (spacing / 2f);
                     canvas.drawLine(noteCenterX - spacing * 0.9f, ly,
                             noteCenterX + spacing * 0.9f, ly, linePaint);
@@ -113,20 +116,27 @@ public class StaffView extends View {
         canvas.drawLine(stemX, stemTopY, stemX, stemBotY, stemPaint);
     }
 
-    private void drawTrebleClef(Canvas canvas, float x, float top, float bottom, float spacing) {
-        String clef = "𝄞";
-        boolean hasClef = clefPaint.hasGlyph(clef);
-        // Treble clef should span roughly one space above the staff to one space
-        // below it (so ~6 spacings total for a 4-spacing staff).
-        float clefHeight = (hasClef ? 6.4f : 4.4f) * spacing;
-        if (!hasClef) {
+    private void drawClef(Canvas canvas, float x, float top, float bottom, float spacing) {
+        boolean isTreble = (clef == SrsState.Clef.TREBLE);
+        String glyph = isTreble ? "𝄞" : "𝄢";
+        boolean hasGlyph = clefPaint.hasGlyph(glyph);
+        if (!hasGlyph) {
+            // Bundled fonts on extremely stripped-down ROMs may lack the
+            // music symbols block. Fall back to a stylised letter.
+            glyph = isTreble ? "G" : "F";
             clefPaint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC));
+        } else {
+            clefPaint.setTypeface(Typeface.SERIF);
         }
+        // Treble glyph extends one space above the staff to one below; bass
+        // is more compact, sitting just inside the staff with a small overhang.
+        float clefHeight = (isTreble
+                ? (hasGlyph ? 6.4f : 4.4f)
+                : (hasGlyph ? 4.6f : 3.8f)) * spacing;
         clefPaint.setTextSize(clefHeight);
+
         Rect bounds = new Rect();
-        String glyph = hasClef ? clef : "G";
         clefPaint.getTextBounds(glyph, 0, glyph.length(), bounds);
-        // Center the glyph vertically on the staff middle line (B4 = bottom - 2 * spacing).
         float staffMiddle = bottom - 2f * spacing;
         float baselineY = staffMiddle - bounds.exactCenterY();
         float xCenter = x + spacing * 0.6f + bounds.width() / 2f;

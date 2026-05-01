@@ -16,11 +16,15 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
     private TextView statsView;
+    private Switch trebleSwitch;
+    private Switch bassSwitch;
+    private TextView accessibilityStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +36,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         refreshStats();
+        refreshAccessibilityStatus();
     }
 
     private void buildUi() {
@@ -49,7 +54,7 @@ public class MainActivity extends Activity {
         root.addView(title);
 
         TextView sub = new TextView(this);
-        sub.setText("A treble-clef sight reading challenge that runs every time you turn the screen on.");
+        sub.setText("A treble or bass clef sight reading challenge that runs at unlock and (optionally) before guarded apps open.");
         sub.setTextColor(Color.parseColor("#555555"));
         sub.setTextSize(14);
         sub.setPadding(0, dp(4), 0, dp(20));
@@ -62,9 +67,28 @@ public class MainActivity extends Activity {
         statsView.setBackgroundColor(Color.parseColor("#F2F2F2"));
         root.addView(statsView);
 
-        addSpacer(root, 18);
+        addSectionHeader(root, "Clefs");
+        final SrsState srs = new SrsState(this);
+        trebleSwitch = addSwitch(root, "Treble clef", srs.isTrebleEnabled(),
+                new android.widget.CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(android.widget.CompoundButton button, boolean isChecked) {
+                        srs.setTrebleEnabled(isChecked);
+                        ensureAtLeastOneClef(srs, true);
+                        refreshStats();
+                    }
+                });
+        bassSwitch = addSwitch(root, "Bass clef", srs.isBassEnabled(),
+                new android.widget.CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(android.widget.CompoundButton button, boolean isChecked) {
+                        srs.setBassEnabled(isChecked);
+                        ensureAtLeastOneClef(srs, false);
+                        refreshStats();
+                    }
+                });
 
-        addSectionHeader(root, "1. Permissions");
+        addSectionHeader(root, "Permissions");
         addBigButton(root, "Grant overlay permission", new View.OnClickListener() {
             @Override public void onClick(View v) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
@@ -89,7 +113,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        addSectionHeader(root, "2. Lock-screen service");
+        addSectionHeader(root, "Lock-screen service");
         addBigButton(root, "Start lock service", new View.OnClickListener() {
             @Override public void onClick(View v) {
                 Intent svc = new Intent(MainActivity.this, LockService.class);
@@ -106,7 +130,24 @@ public class MainActivity extends Activity {
             }
         });
 
-        addSectionHeader(root, "3. Practice");
+        addSectionHeader(root, "Guard specific apps");
+        accessibilityStatus = new TextView(this);
+        accessibilityStatus.setTextSize(13);
+        accessibilityStatus.setTextColor(Color.parseColor("#555555"));
+        accessibilityStatus.setPadding(0, 0, 0, dp(8));
+        root.addView(accessibilityStatus);
+        addBigButton(root, "Enable accessibility service", new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+            }
+        });
+        addBigButton(root, "Pick guarded apps", new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, AppPickerActivity.class));
+            }
+        });
+
+        addSectionHeader(root, "Practice");
         addBigButton(root, "Open challenge now", new View.OnClickListener() {
             @Override public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, LockActivity.class));
@@ -116,17 +157,52 @@ public class MainActivity extends Activity {
             @Override public void onClick(View v) {
                 new SrsState(MainActivity.this).reset();
                 refreshStats();
+                trebleSwitch.setChecked(true);
+                bassSwitch.setChecked(false);
             }
         });
 
         TextView footer = new TextView(this);
-        footer.setText("The challenge appears whenever the screen turns on. After you tap the correct letter the screen unlocks.");
+        footer.setText("The challenge appears whenever the screen is unlocked, and (if the accessibility service is on) whenever a guarded app is opened.");
         footer.setTextColor(Color.parseColor("#888888"));
         footer.setTextSize(12);
         footer.setPadding(0, dp(20), 0, dp(8));
         root.addView(footer);
 
         setContentView(scroll);
+    }
+
+    private Switch addSwitch(ViewGroup parent, String label, boolean checked,
+                             android.widget.CompoundButton.OnCheckedChangeListener l) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(6), 0, dp(6));
+        TextView t = new TextView(this);
+        t.setText(label);
+        t.setTextColor(Color.BLACK);
+        t.setTextSize(16);
+        LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        row.addView(t, labelLp);
+        Switch s = new Switch(this);
+        s.setChecked(checked);
+        s.setOnCheckedChangeListener(l);
+        row.addView(s);
+        parent.addView(row);
+        return s;
+    }
+
+    private void ensureAtLeastOneClef(SrsState srs, boolean preferTreble) {
+        if (!srs.isTrebleEnabled() && !srs.isBassEnabled()) {
+            if (preferTreble) {
+                srs.setBassEnabled(true);
+                bassSwitch.setChecked(true);
+            } else {
+                srs.setTrebleEnabled(true);
+                trebleSwitch.setChecked(true);
+            }
+        }
     }
 
     private void addSectionHeader(ViewGroup parent, String s) {
@@ -151,12 +227,6 @@ public class MainActivity extends Activity {
         parent.addView(b, lp);
     }
 
-    private void addSpacer(ViewGroup parent, int h) {
-        View v = new View(this);
-        parent.addView(v, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(h)));
-    }
-
     private void refreshStats() {
         SrsState s = new SrsState(this);
         int total = s.totalReviews();
@@ -164,11 +234,35 @@ public class MainActivity extends Activity {
         int pct = total == 0 ? 0 : (int) Math.round(100.0 * correct / total);
         StringBuilder sb = new StringBuilder();
         sb.append("Notes mastered: ").append(s.mastered())
-                .append(" / ").append(SrsState.POSITIONS.length).append('\n');
+                .append(" / ").append(s.totalNotes()).append('\n');
         sb.append("Total reviews: ").append(total)
                 .append("    Accuracy: ").append(pct).append("%\n");
         sb.append("Current streak: ").append(s.streak());
         statsView.setText(sb.toString());
+    }
+
+    private void refreshAccessibilityStatus() {
+        if (accessibilityStatus == null) return;
+        boolean on = isAccessibilityServiceEnabled();
+        int guardedCount = new SrsState(this).getGuardedApps().size();
+        if (on) {
+            accessibilityStatus.setText("Service: enabled  ·  Guarded apps: " + guardedCount);
+            accessibilityStatus.setTextColor(Color.parseColor("#1B873B"));
+        } else {
+            accessibilityStatus.setText("Service: not yet enabled. Tap below, then turn on \"Sight Unlock\" in the system Accessibility list.");
+            accessibilityStatus.setTextColor(Color.parseColor("#B00020"));
+        }
+    }
+
+    private boolean isAccessibilityServiceEnabled() {
+        String enabled = Settings.Secure.getString(getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (enabled == null) return false;
+        String target = getPackageName() + "/" + AppGuardService.class.getName();
+        for (String s : enabled.split(":")) {
+            if (s.equalsIgnoreCase(target)) return true;
+        }
+        return false;
     }
 
     private int dp(int v) {

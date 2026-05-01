@@ -14,7 +14,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -24,7 +23,6 @@ public class LockActivity extends Activity {
     private static final int BG = 0xFF2A2F3D;
     private static final int INK = 0xFFE8DDC5;
     private static final int INK_DIM = 0xFF8A8170;
-    private static final int BUTTON_BG = 0xFF3D4356;
     private static final int OK_INK = 0xFF9BC58A;
     private static final int ERR_INK = 0xFFD08C8C;
     private static final long IDLE_TIMEOUT_MS = 30_000L;
@@ -37,8 +35,8 @@ public class LockActivity extends Activity {
     private StaffView staff;
     private TextView feedback;
     private TextView stats;
-    private LinearLayout buttonRow;
-    private int currentIndex;
+    private PianoView piano;
+    private SrsState.Pick current;
     private boolean awaitingAnswer = true;
 
     @Override
@@ -89,7 +87,7 @@ public class LockActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
-        root.setPadding(dp(16), dp(24), dp(16), dp(24));
+        root.setPadding(dp(16), dp(24), dp(16), dp(16));
 
         stats = new TextView(this);
         stats.setTextColor(INK_DIM);
@@ -131,84 +129,55 @@ public class LockActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        buttonRow = new LinearLayout(this);
-        buttonRow.setOrientation(LinearLayout.HORIZONTAL);
-        buttonRow.setGravity(Gravity.CENTER);
-        char[] letters = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
-        for (final char letter : letters) {
-            Button b = new Button(this);
-            b.setText(String.valueOf(letter));
-            b.setTextSize(18);
-            b.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
-            b.setAllCaps(false);
-            b.setTextColor(INK);
-            b.setBackgroundColor(BUTTON_BG);
-            b.setStateListAnimator(null);
-            LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(
-                    0, dp(60), 1f);
-            bLp.setMargins(dp(3), 0, dp(3), 0);
-            buttonRow.addView(b, bLp);
-            b.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    onAnswer(letter);
-                }
-            });
-        }
-        root.addView(buttonRow, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
+        piano = new PianoView(this);
+        piano.setOnLetterClick(new PianoView.OnLetterClick() {
+            @Override public void onLetter(char letter) { onAnswer(letter); }
+        });
+        LinearLayout.LayoutParams pianoLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(150));
+        root.addView(piano, pianoLp);
 
         setContentView(root);
     }
 
     private void nextQuestion() {
-        currentIndex = srs.pickNextIndex();
-        staff.setNotePosition(SrsState.POSITIONS[currentIndex]);
+        current = srs.pickNext();
+        staff.setClef(current.clef);
+        staff.setNotePosition(current.position);
         feedback.setText("");
         awaitingAnswer = true;
         updateStats();
-        for (int i = 0; i < buttonRow.getChildCount(); i++) {
-            buttonRow.getChildAt(i).setEnabled(true);
-        }
+        piano.setInputEnabled(true);
     }
 
     private void updateStats() {
         int total = srs.totalReviews();
         int correct = srs.correctReviews();
         int pct = total == 0 ? 0 : (int) Math.round(100.0 * correct / total);
-        stats.setText("Mastered " + srs.mastered() + "/" + SrsState.POSITIONS.length
+        stats.setText("Mastered " + srs.mastered() + "/" + srs.totalNotes()
                 + "   Streak " + srs.streak()
                 + "   Reviews " + total + " (" + pct + "%)");
     }
 
     private void onAnswer(char letter) {
         if (!awaitingAnswer) return;
-        char correct = SrsState.LETTERS[currentIndex];
+        char correct = current.letter();
         boolean isRight = (letter == correct);
-        srs.recordAnswer(currentIndex, isRight);
+        srs.recordAnswer(current.clef, current.position, isRight);
         awaitingAnswer = false;
-        for (int i = 0; i < buttonRow.getChildCount(); i++) {
-            buttonRow.getChildAt(i).setEnabled(false);
-        }
+        piano.setInputEnabled(false);
         if (isRight) {
             feedback.setTextColor(OK_INK);
             feedback.setText(correct + " — correct");
             staff.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    finishAndUnlock();
-                }
+                @Override public void run() { finishAndUnlock(); }
             }, 350);
         } else {
             vibrate();
             feedback.setTextColor(ERR_INK);
             feedback.setText("That was " + correct + ". Try the next one.");
             staff.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    nextQuestion();
-                }
+                @Override public void run() { nextQuestion(); }
             }, 1100);
         }
     }
